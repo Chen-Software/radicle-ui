@@ -182,6 +182,18 @@ function urlToRoute(url: URL): Route | null {
   const segments = url.pathname.substring(1).split("/");
 
   const resource = segments.shift();
+
+  if (resource?.startsWith("rad:")) {
+    return resolveRepoRoute(
+      config.preferredSeeds[
+      Math.random() * config.preferredSeeds.length | 0
+      ],
+      resource,
+      segments,
+      url.search
+    );
+  }
+
   switch (resource) {
     case "nodes":
     case "seeds": {

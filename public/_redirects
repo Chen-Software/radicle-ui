@@ -1,0 +1,3 @@
+/:rid/i/:id  /:rid/issues/:id
+/:rid/p/:id  /:rid/patches/:id
+/* /index.html 200

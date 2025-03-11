@@ -28,7 +28,7 @@
     }
   ],
   "namedRepositories": {
-    "default": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ",
-    "radicle-ui": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ"
+    "radicle-ui": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ",
+    "default": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ"
   }
 }

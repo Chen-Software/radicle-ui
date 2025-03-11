@@ -185,9 +185,12 @@ function urlToRoute(url: URL): Route | null {
 
   if (resource?.startsWith("rad:")) {
     return resolveRepoRoute(
-      config.preferredSeeds[
-      Math.random() * config.preferredSeeds.length | 0
-      ],
+      {
+        ...config.preferredSeeds[
+        Math.random() * config.preferredSeeds.length | 0
+        ],
+        hidden: true,
+      },
       resource,
       segments,
       url.search

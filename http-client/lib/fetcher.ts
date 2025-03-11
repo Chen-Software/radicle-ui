@@ -10,6 +10,7 @@ export interface BaseUrl {
   hostname: string;
   port: number;
   scheme: string;
+  hidden?: boolean;
 }
 
 // Error that is thrown by `Fetcher` methods.

@@ -928,7 +928,10 @@ function resolvePatchesRoute(
 export function repoRouteToPath(route: RepoRoute): string {
   const node = nodePath(route.node);
 
-  const pathSegments = [node, route.repo];
+  const pathSegments =
+    route.node.hidden ?
+      [route.repo] :
+      [node, route.repo];
 
   if (route.resource === "repo.source") {
     if (route.peer) {

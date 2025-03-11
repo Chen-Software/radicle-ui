@@ -26,5 +26,8 @@
       "port": 443,
       "scheme": "https"
     }
-  ]
+  ],
+  "namedRepositories": {
+    "radicle-ui": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ"
+  }
 }

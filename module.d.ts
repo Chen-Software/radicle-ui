@@ -14,6 +14,7 @@ declare module "virtual:*" {
     reactions: string[];
     supportWebsite: string;
     preferredSeeds: BaseUrl[];
+    namedRepositories: Record<string, string>;
   };
 
   export default config;

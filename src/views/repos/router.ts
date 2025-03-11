@@ -1001,7 +1001,10 @@ export function repoRouteToPath(route: RepoRoute): string {
 function patchRouteToPath(route: RepoPatchRoute): string {
   const node = nodePath(route.node);
 
-  const pathSegments = [node, route.repo];
+  const pathSegments =
+    route.node.hidden ?
+      ["", route.repo] :
+      [node, route.repo];
 
   pathSegments.push("patches", route.patch);
   if (route.view?.name === "changes") {

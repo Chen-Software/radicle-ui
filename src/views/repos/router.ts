@@ -843,7 +843,7 @@ export function resolveRepoRoute(
       repo,
       commit: segments[0],
     };
-  } else if (content === "issues") {
+  } else if (["issues", "i"].includes(content)) {
     const issueOrAction = segments.shift();
     if (issueOrAction) {
       return {

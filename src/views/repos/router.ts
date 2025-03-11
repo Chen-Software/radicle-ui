@@ -925,13 +925,25 @@ function resolvePatchesRoute(
   }
 }
 
-export function repoRouteToPath(route: RepoRoute): string {
+export function getPathSegments(route: RepoRoute): string[] {
+
   const node = nodePath(route.node);
+
+  if (Object.values(config.namedRepositories).includes(route.repo)) {
+    return ["", Object.entries(config.namedRepositories).find(([, value]) => value === route.repo)![0]];
+  }
 
   const pathSegments =
     route.node.hidden ?
       ["", route.repo] :
       [node, route.repo];
+
+  return pathSegments;
+}
+
+export function repoRouteToPath(route: RepoRoute): string {
+
+  const pathSegments = getPathSegments(route);
 
   if (route.resource === "repo.source") {
     if (route.peer) {
@@ -999,12 +1011,8 @@ export function repoRouteToPath(route: RepoRoute): string {
 }
 
 function patchRouteToPath(route: RepoPatchRoute): string {
-  const node = nodePath(route.node);
 
-  const pathSegments =
-    route.node.hidden ?
-      ["", route.repo] :
-      [node, route.repo];
+  const pathSegments = getPathSegments(route);
 
   pathSegments.push("patches", route.patch);
   if (route.view?.name === "changes") {

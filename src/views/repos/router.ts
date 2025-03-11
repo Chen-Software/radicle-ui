@@ -867,7 +867,7 @@ export function resolveRepoRoute(
         status,
       };
     }
-  } else if (content === "patches") {
+  } else if (["patches", "p"].includes(content)) {
     return resolvePatchesRoute(node, repo, segments, urlSearch);
   } else {
     return null;

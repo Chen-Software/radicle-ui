@@ -930,7 +930,7 @@ export function repoRouteToPath(route: RepoRoute): string {
 
   const pathSegments =
     route.node.hidden ?
-      [route.repo] :
+      ["", route.repo] :
       [node, route.repo];
 
   if (route.resource === "repo.source") {

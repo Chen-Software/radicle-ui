@@ -635,7 +635,7 @@ export const gitOptions = {
   },
 };
 export const defaultConfig: Config = {
-  publicExplorer: "https://app.radicle.xyz/nodes/$host/$rid$path",
+  publicExplorer: "https://git.chen.so/nodes/$host/$rid$path",
   preferredSeeds: [],
   web: {
     pinned: {

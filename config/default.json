@@ -17,11 +17,6 @@
       "scheme": "https"
     },
     {
-      "hostname": "seed.radicle.xyz",
-      "port": 443,
-      "scheme": "https"
-    },
-    {
       "hostname": "seed.radicle.garden",
       "port": 443,
       "scheme": "https"

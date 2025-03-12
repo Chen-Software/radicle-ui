@@ -102,27 +102,30 @@
   <div class="desktop-header">
     <header>
       <div class="breadcrumbs">
-        <span class="breadcrumb">
-          <Link
-            style="display: flex; align-items: center; gap: 0.25rem;"
-            route={{
-              resource: "nodes",
-              params: {
-                baseUrl,
-                repoPageIndex: 0,
-              },
-            }}>
-            <img
-              width="24"
-              height="24"
-              class="avatar"
-              alt="Radicle logo"
-              src={nodeAvatarUrl
-                ? nodeAvatarUrl
-                : "/images/default-seed-avatar.png"} />
-            {baseUrl.hostname}
-          </Link>
-        </span>
+
+        {#if !baseUrl.hidden}
+          <span class="breadcrumb">
+            <Link
+              style="display: flex; align-items: center; gap: 0.25rem;"
+              route={{
+                resource: "nodes",
+                params: {
+                  baseUrl,
+                  repoPageIndex: 0,
+                },
+              }}>
+              <img
+                width="24"
+                height="24"
+                class="avatar"
+                alt="Radicle logo"
+                src={nodeAvatarUrl
+                  ? nodeAvatarUrl
+                  : "/images/default-seed-avatar.png"} />
+              {baseUrl.hostname}
+            </Link>
+          </span>
+        {/if}
 
         <Separator />
 

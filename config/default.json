@@ -25,6 +25,7 @@
   "namedRepositories": {
     "cms": "rad:z31RADNa8uNMWFep88bhenzxTR1Ei",
     "radicle-ui": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ",
+    "tina-gatsby-ts": "rad:zuTgS8Nw72tsJxbEHPNgGUa3Gyuf",
     "tinasaurus-panda-ts": "rad:z31RADNa8uNMWFep88bhenzxTR1Ei",
     "default": "rad:z3kb9edS8JXMrR8oqoPguxcSzDyVJ"
   }

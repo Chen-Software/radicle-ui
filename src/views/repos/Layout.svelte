@@ -125,9 +125,9 @@
               {baseUrl.hostname}
             </Link>
           </span>
-        {/if}
 
-        <Separator />
+          <Separator />
+        {/if}
 
         <span class="breadcrumb" title={repo.rid}>
           <Link

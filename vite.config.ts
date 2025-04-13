@@ -47,6 +47,7 @@ export default defineConfig({
   build: {
     outDir: "build",
     rollupOptions: {
+      external: ["vscode-oniguruma/release/onig.wasm?url"],
       output: {
         manualChunks: id => {
           if (id.includes("lodash")) {

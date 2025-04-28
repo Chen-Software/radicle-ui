@@ -1,0 +1,212 @@
+name: Issue Traceability
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+env:
+  RADICLE_SITES: '["git.chen.so", "code.chen.so", "git.chen.software", "code.chen.software"]'
+  RADICLE_URLS: '["https://git.chen.so", "https://code.chen.so", "https://git.chen.software", "https://code.chen.software"]'
+  # Keep legacy env vars for backward compatibility
+  RADICLE_SITE: 'git.chen.so'
+  RADICLE_URL: 'https://git.chen.so'
+
+jobs:
+  annotate-commits:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensures full history for commit rewriting
+
+      - name: Retrieve Radicle Issue ID from PR Body
+        id: extract_issue
+        run: |
+          PR_BODY='${{ github.event.pull_request.body }}'
+          ISSUE_ID=""
+          FOUND_SITE=""
+
+          # Convert JSON arrays to bash arrays
+          readarray -t SITES < <(echo '${{ env.RADICLE_SITES }}' | jq -r '.[]')
+
+          # Try different formats for finding the issue ID across all sites
+          for SITE in "${SITES[@]}"; do
+            # 1. Try to extract from a full URL
+            ISSUE_ID=$(echo "$PR_BODY" | grep -Eo "https://${SITE}/[^/]+/i/[0-9a-f]{40}" | sed -E 's#.*/i/##' | head -n1)
+            
+            if [ ! -z "$ISSUE_ID" ]; then
+              FOUND_SITE="$SITE"
+              break
+            fi
+          done
+
+          # 2. If not found, look for a standalone 40-character SHA (this is the direct issue ID)
+          if [ -z "$ISSUE_ID" ]; then
+            ISSUE_ID=$(echo "$PR_BODY" | grep -Eo '\b[0-9a-f]{40}\b' | head -n1)
+            # If we found an issue ID but no site, use the first site as default
+            if [ ! -z "$ISSUE_ID" ]; then
+              FOUND_SITE="${SITES[0]}"
+            fi
+          fi
+
+          # If still not found, mark as not found but don't exit
+          if [ -z "$ISSUE_ID" ]; then
+            echo "No issue reference found in PR body."
+            echo "issue_found=false" >> $GITHUB_OUTPUT
+            # Set a default ISSUE_ID to avoid errors in later steps
+            ISSUE_ID="not_found"
+            FOUND_SITE="${SITES[0]}"
+          else
+            echo "issue_found=true" >> $GITHUB_OUTPUT
+            echo "Found Issue ID: $ISSUE_ID"
+          fi
+
+          echo "ISSUE_ID=$ISSUE_ID" >> $GITHUB_ENV
+          # Export the found site or default to first site
+          echo "RADICLE_SITE=$FOUND_SITE" >> $GITHUB_ENV
+          echo "Using Radicle site: $FOUND_SITE"
+        shell: bash
+
+      - name: Amend Commit Messages with Radicle Issue Link
+        if: steps.extract_issue.outputs.issue_found == 'true'
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # --- Safety Checks ---
+          # Ensure ISSUE_ID environment variable is set
+          if [ -z "$ISSUE_ID" ]; then
+            echo "::error::ISSUE_ID environment variable is not set. Cannot amend commits."
+            exit 1
+          fi
+          # Ensure REPO_NAME environment variable is set
+          if [ -z "$REPO_NAME" ]; then
+            echo "::error::REPO_NAME environment variable is not set. Cannot amend commits."
+            exit 1
+          fi
+          # Ensure BASE_SHA environment variable is set
+          if [ -z "$BASE_SHA" ]; then
+            echo "::error::BASE_SHA environment variable is not set. Cannot amend commits."
+            exit 1
+          fi
+
+          # --- Git Configuration ---
+          # Configure Git user for the changes made by this action
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions+bot+users.noreply@chen.software"
+
+          # --- Amend Logic ---
+          # Use the primary URL (first in the list) for the issue link
+          readarray -t URLS < <(echo '${{ env.RADICLE_URLS }}' | jq -r '.[]')
+          ISSUE_URL="${URLS[0]}/${REPO_NAME}/i/${ISSUE_ID}"
+
+          # Make the script executable
+          chmod +x .github/scripts/issue-traceability-amend-commit-msg.sh
+
+          # Execute the script, passing required variables
+          ISSUE_URL="$ISSUE_URL" BASE_SHA="$BASE_SHA" .github/scripts/issue-traceability-amend-commit-msg.sh
+        shell: bash
+
+      - name: Push Amended Commits
+        if: steps.extract_issue.outputs.issue_found == 'true'
+        run: |
+          git push --force-with-lease origin HEAD:${{ github.event.pull_request.head.ref }}
+        shell: bash
+
+      - name: Calculate Issue Traceability
+        id: traceability_report
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          echo "--- Debug: Environment Variables --- "
+          echo "RADICLE_SITES: $RADICLE_SITES"
+          echo "RADICLE_URLS: $RADICLE_URLS"
+          echo "------------------------------------"
+
+          # Convert JSON arrays to bash arrays for sites
+          readarray -t SITES < <(echo "$RADICLE_SITES" | jq -r '.[]')
+          readarray -t URLS < <(echo "$RADICLE_URLS" | jq -r '.[]')
+
+          # Validate array creation
+          if [ ${#SITES[@]} -eq 0 ] || [ ${#URLS[@]} -eq 0 ]; then
+            echo "::error::Failed to parse RADICLE_SITES or RADICLE_URLS JSON."
+            exit 1
+          fi
+          echo "Parsed SITES: ${SITES[@]}"
+          echo "Parsed URLS: ${URLS[@]}"
+
+          # Create grep pattern for all sites
+          SITES_PATTERN=""
+          for site in "${SITES[@]}"; do
+            escaped_site=$(echo "$site" | sed 's/\./\\./g')
+            if [ -z "$SITES_PATTERN" ]; then
+              SITES_PATTERN="https://${escaped_site}/"
+            else
+              SITES_PATTERN="${SITES_PATTERN}|https://${escaped_site}/"
+            fi
+          done
+          echo "Generated SITES_PATTERN: $SITES_PATTERN"
+
+          # Calculate total commits and issue commits across the repository
+          total_commits=$(git rev-list --count HEAD)
+          # Use the generated pattern in grep
+          issue_commits=$(git log --format=%B HEAD | grep -cE "^- Issue: (${SITES_PATTERN})")
+          echo "Total Commits: $total_commits, Issue Commits: $issue_commits"
+
+          # Calculate PR-specific commits (commits between BASE_REF and HEAD)
+          pr_total_commits=$(git rev-list --count ${{ github.event.pull_request.base.sha }}..HEAD)
+          pr_issue_commits=$(git log --format=%B ${{ github.event.pull_request.base.sha }}..HEAD | grep -cE "^- Issue: (${SITES_PATTERN})")
+          echo "PR Total Commits: $pr_total_commits, PR Issue Commits: $pr_issue_commits"
+
+          # Make the report generation script executable
+          chmod +x .github/scripts/issue-traceability-generate-report.sh
+
+          # Create a directory for the report
+          mkdir -p ./tmp
+          
+          # Run the script and write output directly to a file
+          .github/scripts/issue-traceability-generate-report.sh \
+            "$total_commits" "$issue_commits" "$REPO_NAME" \
+            "$pr_total_commits" "$pr_issue_commits" > ./tmp/traceability-report.md
+          
+          # Check if the script executed successfully
+          if [ $? -ne 0 ]; then
+            echo "::error::Report generation script failed."
+            echo "Failed to generate traceability report." > ./tmp/traceability-report.md
+          fi
+          
+          # Set the file path as output
+          echo "report_file=./tmp/traceability-report.md" >> $GITHUB_OUTPUT
+          
+          # Also print to logs for debugging
+          echo "--- Generated Report --- "
+          cat ./tmp/traceability-report.md
+          echo "------------------------ "
+        shell: bash
+
+      - name: Find Existing Comment
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: 'Issue Traceability Report'
+
+      - name: Post or Update Comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: ${{ steps.traceability_report.outputs.report_file }}
+          edit-mode: replace
+
+      - name: Check Issue Requirement
+        if: steps.extract_issue.outputs.issue_found == 'false'
+        run: |
+          echo "::error::No issue reference found in PR body. Please add a Radicle issue reference to the PR description."
+          exit 1
+        shell: bash

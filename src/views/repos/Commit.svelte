@@ -3,7 +3,7 @@
 
   import dompurify from "dompurify";
   import escape from "lodash/escape";
-  import { baseUrlToString, formatObjectId } from "@app/lib/utils";
+  import { baseUrlToString, formatObjectId, convertUrlsToExternalLinks } from "@app/lib/utils";
 
   import Button from "@app/components/Button.svelte";
   import Changeset from "@app/views/repos/Changeset.svelte";

@@ -109,6 +109,23 @@ jobs:
 
           # Execute the script, passing required variables
           ISSUE_URL="$ISSUE_URL" BASE_SHA="$BASE_SHA" .github/scripts/issue-traceability-amend-commit-msg.sh
+
+          # After amend, skip if commits match upstream patch-id
+          git fetch origin main
+          CHERRIES=$(git cherry origin/main HEAD)
+          if echo "$CHERRIES" | grep -q '^-'; then
+            UPSTREAM_SHA=$(echo "$CHERRIES" | grep '^- ' | head -n1 | awk '{print $2}')
+            # Compare commit messages
+            LOCAL_MSG=$(git log -1 --pretty=%B HEAD)
+            UPSTREAM_MSG=$(git log -1 --pretty=%B $UPSTREAM_SHA)
+            if [ "$LOCAL_MSG" = "$UPSTREAM_MSG" ]; then
+              echo "Exact duplicate commit (diff & message) at $UPSTREAM_SHA; resetting"
+              git reset --hard $UPSTREAM_SHA
+              exit 0
+            else
+              echo "Patch matches but commit message differs; proceeding with amend"
+            fi
+          fi
         shell: bash
 
       - name: Push Amended Commits

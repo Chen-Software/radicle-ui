@@ -76,7 +76,7 @@ test.describe(() => {
     const { rid } = await createRepo(peer, { name: "no-releases" });
 
     await page.goto(`${peer.uiUrl()}/${rid}/releases`);
-    await expect(page.getByText("No releases")).toBeVisible();
+    await expect(page.getByText("No releases", { exact: true })).toBeVisible();
   });
 
   test("hide fully redacted releases", async ({ page, peer }) => {
@@ -97,7 +97,7 @@ test.describe(() => {
     ]);
 
     await page.goto(`${peer.uiUrl()}/${rid}/releases`);
-    await expect(page.getByText("No releases")).toBeVisible();
+    await expect(page.getByText("No releases", { exact: true })).toBeVisible();
 
     // The tab counter comes from the repo metadata, which counts every release
     // COB, redacted or not.

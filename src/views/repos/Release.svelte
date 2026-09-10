@@ -61,21 +61,33 @@
     delegateIds.has(a.author.id),
   );
   // Artifacts are scoped to delegate authors by default; the endpoint returns
-  // all of them, so filtering happens client-side.
-  $: authorArtifacts = allAuthors ? release.artifacts : delegateArtifacts;
+  // all of them, so filtering happens client-side. With no delegate artifact
+  // at all, fall back to every author.
+  $: authorArtifacts =
+    allAuthors || delegateArtifacts.length === 0
+      ? release.artifacts
+      : delegateArtifacts;
   $: shownArtifacts = visible(authorArtifacts, showRedacted, delegateIds);
+  // The redacted count is the hidden set within the current author scope.
+  $: redactedCount = authorArtifacts.filter(a =>
+    redactedByTrusted(a, delegateIds),
+  ).length;
 
-  // Segment counts reflect what each choice would actually show; the redacted
-  // count is the hidden set within the current author scope.
+  // Segment counts reflect what each choice would actually show, so an
+  // artifact hidden as redacted never counts towards a scope. They label the
+  // segments only: the author scope and the filter visibility come from the
+  // unfiltered sets, so toggling redacted artifacts never moves them.
   $: delegateCount = visible(
     delegateArtifacts,
     showRedacted,
     delegateIds,
   ).length;
   $: allCount = visible(release.artifacts, showRedacted, delegateIds).length;
-  $: redactedCount = authorArtifacts.filter(a =>
-    redactedByTrusted(a, delegateIds),
-  ).length;
+
+  // Filter only when both scopes hold something.
+  $: showFilters =
+    delegateArtifacts.length > 0 &&
+    delegateArtifacts.length !== release.artifacts.length;
 
   // Format a byte count as a human-readable size (mirrors the CLI display).
   function formatBytes(bytes: number): string {
@@ -169,6 +181,12 @@
     gap: 0.5rem;
     flex-wrap: wrap;
     padding: 1rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .redacted-toggle {
+    margin-left: auto;
+  }
+  .filter-divider {
     border-bottom: 1px solid var(--color-border-subtle);
   }
   .empty-artifacts {
@@ -406,6 +424,9 @@
             {baseUrl}
             nodeId={release.creator.id}
             alias={release.creator.alias} />
+          {#if delegateIds.has(release.creator.id)}
+            <DelegateBadge />
+          {/if}
           released
           <Id id={release.id} />
           <span title={utils.absoluteTimestamp(release.createdAt)}>
@@ -415,59 +436,71 @@
       </CobHeader>
 
       <div class="artifacts">
-        <div class="filter">
-          <div class="segmented">
-            <Link
-              route={{
-                resource: "repo.release",
-                repo: repoId,
-                node: baseUrl,
-                release: release.id,
-              }}>
-              <Button let:hover variant={!allAuthors ? "gray" : "background"}>
-                <Icon name="badge" />
-                <div class="title-counter">
-                  Delegates
-                  <span
-                    class="counter"
-                    class:selected={!allAuthors}
-                    class:hover={hover && allAuthors}>
-                    {delegateCount}
-                  </span>
-                </div>
-              </Button>
-            </Link>
-            <Link
-              route={{
-                resource: "repo.release",
-                repo: repoId,
-                node: baseUrl,
-                release: release.id,
-                allAuthors: true,
-              }}>
-              <Button let:hover variant={allAuthors ? "gray" : "background"}>
-                <Icon name="avatar-incognito" />
-                <div class="title-counter">
-                  All
-                  <span
-                    class="counter"
-                    class:selected={allAuthors}
-                    class:hover={hover && !allAuthors}>
-                    {allCount}
-                  </span>
-                </div>
-              </Button>
-            </Link>
+        {#if showFilters || redactedCount > 0}
+          <div class="filter">
+            {#if showFilters}
+              <div class="segmented">
+                <Link
+                  route={{
+                    resource: "repo.release",
+                    repo: repoId,
+                    node: baseUrl,
+                    release: release.id,
+                  }}>
+                  <Button
+                    let:hover
+                    variant={!allAuthors ? "gray" : "background"}>
+                    <Icon name="badge" />
+                    <div class="title-counter">
+                      Delegates
+                      <span
+                        class="counter"
+                        class:selected={!allAuthors}
+                        class:hover={hover && allAuthors}>
+                        {delegateCount}
+                      </span>
+                    </div>
+                  </Button>
+                </Link>
+                <Link
+                  route={{
+                    resource: "repo.release",
+                    repo: repoId,
+                    node: baseUrl,
+                    release: release.id,
+                    allAuthors: true,
+                  }}>
+                  <Button
+                    let:hover
+                    variant={allAuthors ? "gray" : "background"}>
+                    <Icon name="avatar-incognito" />
+                    <div class="title-counter">
+                      All
+                      <span
+                        class="counter"
+                        class:selected={allAuthors}
+                        class:hover={hover && !allAuthors}>
+                        {allCount}
+                      </span>
+                    </div>
+                  </Button>
+                </Link>
+              </div>
+            {/if}
+            {#if redactedCount > 0}
+              <div class="redacted-toggle">
+                <Button
+                  variant="background"
+                  on:click={() => (showRedacted = !showRedacted)}>
+                  {showRedacted ? "Hide redacted" : "Show redacted"}
+                  <span class="counter">{redactedCount}</span>
+                </Button>
+              </div>
+            {/if}
           </div>
-          {#if redactedCount > 0}
-            <Button
-              variant="background"
-              on:click={() => (showRedacted = !showRedacted)}>
-              {showRedacted ? "Hide redacted" : "Show redacted"}
-              <span class="counter">{redactedCount}</span>
-            </Button>
-          {/if}
-        </div>
+        {:else}
+          <div class="filter-divider"></div>
+        {/if}
 
         {#if shownArtifacts.length === 0}
           <div class="empty-artifacts">

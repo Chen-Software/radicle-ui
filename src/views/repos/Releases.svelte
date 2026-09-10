@@ -21,6 +21,7 @@
   export let repo: Repo;
   export let repoId: string;
   export let allAuthors: boolean;
+  export let showFilters: boolean;
   export let nodeId: string;
   export let nodeAvatarUrl: string | undefined;
 
@@ -36,12 +37,14 @@
   }
 
   $: delegateIds = new Set(repo.delegates.map(d => d.id));
-  // The delegate count isn't in repo metadata; derive it from the loaded list.
-  // In the all-authors view we filter for delegates; otherwise the loaded list
-  // already is the delegate set.
+  // The delegate count isn't in repo metadata; derive it from the loaded
+  // pages. It labels the segment only, and reads as "30+" while pages are
+  // outstanding; whether the segments show at all is settled by the router.
   $: delegateReleaseCount = allAuthors
     ? allReleases.filter(r => delegateIds.has(r.creator.id)).length
     : allReleases.length;
+
+  $: releaseCount = repo.payloads["xyz.radicle.project"].meta.releases;
 
   const api = new HttpdClient(baseUrl);
 
@@ -133,46 +136,49 @@
       Releases
     </Link>
   </svelte:fragment>
-  <div slot="header" class="header">
-    <Link route={{ resource: "repo.releases", repo: repoId, node: baseUrl }}>
-      <Button let:hover variant={!allAuthors ? "gray" : "background"}>
-        <Icon name="badge" />
-        <div class="title-counter">
-          Delegates
-          <span
-            class="counter"
-            class:selected={!allAuthors}
-            class:hover={hover && allAuthors}>
-            {delegateReleaseCount}{showMoreButton ? "+" : ""}
-          </span>
-        </div>
-      </Button>
-    </Link>
-    <Link
-      route={{
-        resource: "repo.releases",
-        repo: repoId,
-        node: baseUrl,
-        allAuthors: true,
-      }}>
-      <Button let:hover variant={allAuthors ? "gray" : "background"}>
-        <Icon name="avatar-incognito" />
-        <div class="title-counter">
-          All
-          <!-- Only the full (all-authors) count is in repo metadata; absent on
-          older nodes. -->
-          {#if repo.payloads["xyz.radicle.project"].meta.releases !== undefined}
-            <span
-              class="counter"
-              class:selected={allAuthors}
-              class:hover={hover && !allAuthors}>
-              {repo.payloads["xyz.radicle.project"].meta.releases}
-            </span>
-          {/if}
-        </div>
-      </Button>
-    </Link>
-  </div>
+  <svelte:fragment slot="header">
+    {#if showFilters}
+      <div class="header">
+        <Link
+          route={{ resource: "repo.releases", repo: repoId, node: baseUrl }}>
+          <Button let:hover variant={!allAuthors ? "gray" : "background"}>
+            <Icon name="badge" />
+            <div class="title-counter">
+              Delegates
+              <span
+                class="counter"
+                class:selected={!allAuthors}
+                class:hover={hover && allAuthors}>
+                {delegateReleaseCount}{showMoreButton ? "+" : ""}
+              </span>
+            </div>
+          </Button>
+        </Link>
+        <Link
+          route={{
+            resource: "repo.releases",
+            repo: repoId,
+            node: baseUrl,
+            allAuthors: true,
+          }}>
+          <Button let:hover variant={allAuthors ? "gray" : "background"}>
+            <Icon name="avatar-incognito" />
+            <div class="title-counter">
+              All
+              {#if releaseCount !== undefined}
+                <span
+                  class="counter"
+                  class:selected={allAuthors}
+                  class:hover={hover && !allAuthors}>
+                  {releaseCount}
+                </span>
+              {/if}
+            </div>
+          </Button>
+        </Link>
+      </div>
+    {/if}
+  </svelte:fragment>
 
   <List items={allReleases}>
     <ReleaseTeaser
@@ -181,6 +187,7 @@
       {baseUrl}
       {repoId}
       {allAuthors}
+      {delegateIds}
       release={item} />
   </List>
 
@@ -195,7 +202,11 @@
 
   {#if allReleases.length === 0 && !error}
     <div class="placeholder">
-      <Placeholder iconName="desert" caption="No releases" />
+      <Placeholder
+        iconName="desert"
+        caption={showFilters && !allAuthors
+          ? "No releases by delegates"
+          : "No releases"} />
     </div>
   {/if}
 

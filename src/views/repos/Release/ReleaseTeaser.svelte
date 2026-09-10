@@ -3,6 +3,7 @@
 
   import { absoluteTimestamp, formatTimestamp } from "@app/lib/utils";
 
+  import DelegateBadge from "./DelegateBadge.svelte";
   import Icon from "@app/components/Icon.svelte";
   import Id from "@app/components/Id.svelte";
   import InlineTitle from "@app/views/repos/components/InlineTitle.svelte";
@@ -10,6 +11,7 @@
   import NodeId from "@app/components/NodeId.svelte";
 
   export let baseUrl: BaseUrl;
+  export let delegateIds: Set<string>;
   export let release: Release;
   export let repoId: string;
   export let allAuthors: boolean = false;
@@ -101,6 +103,9 @@
           {baseUrl}
           nodeId={release.creator.id}
           alias={release.creator.alias} />
+        {#if delegateIds.has(release.creator.id)}
+          <DelegateBadge />
+        {/if}
         released
         <Id id={release.id} />
         <span title={absoluteTimestamp(release.createdAt)}>
